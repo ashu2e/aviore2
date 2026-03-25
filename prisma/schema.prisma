@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String                 @id @default(uuid())
+  name          String
+  email         String                 @unique
+  password_hash String
+  is_verified   Boolean                @default(false)
+  role          String                 @default("buyer") // 'buyer' or 'seller'
+  upi_id        String?
+  created_at    DateTime               @default(now())
+  listings      Listing[]
+  purchases     PurchaseConfirmation[]
+  cartItems     CartItem[]
+}
+
+
+model Listing {
+  id             String                 @id @default(uuid())
+  title          String
+  description    String
+  type           String                 
+  price          Float
+  category       String
+  upi_id         String                 @default("checkout@aviore")
+  img            String                 @default("✨")
+  created_at     DateTime               @default(now())
+  
+  userId         String
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  qrCodes        QrCode[]
+  purchases      PurchaseConfirmation[]
+  cartItems      CartItem[]
+
+  @@index([category])
+  @@index([type])
+}
+
+model QrCode {
+  id           String   @id @default(uuid())
+  upi_id       String
+  qr_image_url String
+  created_at   DateTime @default(now())
+  
+  listingId    String
+  listing      Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model PurchaseConfirmation {
+  id            String   @id @default(uuid())
+  status        String   @default("pending") 
+  message       String?
+  total_amount  Float    @default(0)
+  cart_group_id String?  
+  created_at    DateTime @default(now())
+  
+  buyerId       String
+  buyer         User     @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  
+  listingId     String
+  listing       Listing  @relation(fields: [listingId], references: [id], onDelete: Restrict)
+
+  @@index([buyerId])
+  @@index([listingId])
+}
+
+model CartItem {
+  id         String   @id @default(uuid())
+  quantity   Int      @default(1)
+  created_at DateTime @default(now())
+  
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  listingId  String
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([userId])
+}
